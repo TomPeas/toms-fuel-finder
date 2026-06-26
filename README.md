@@ -25,14 +25,14 @@ environment — no manual venv activation needed.
 
 ## Common commands
 
-| Task | Command |
-|------|---------|
-| Run the API (with auto-reload) | `uv run fastapi dev` |
-| Run the tests | `uv run pytest` |
-| Format the code | `uv run black .` |
-| Lint (and autofix) | `uv run ruff check --fix .` |
-| Type check | `uv run mypy .` |
-| Run all pre-commit hooks manually | `uv run pre-commit run --all-files` |
+| Task | Command                              |
+|------|--------------------------------------|
+| Run the API (with auto-reload) | `uv run fastapi dev src/app/main.py` |
+| Run the tests | `uv run pytest`                      |
+| Format the code | `uv run black .`                     |
+| Lint (and autofix) | `uv run ruff check --fix .`          |
+| Type check | `uv run mypy .`                      |
+| Run all pre-commit hooks manually | `uv run pre-commit run --all-files`  |
 
 Once the API is running, the interactive docs are at:
 
