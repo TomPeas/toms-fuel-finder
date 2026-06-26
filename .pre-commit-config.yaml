@@ -1,0 +1,35 @@
+# Runs automatically on `git commit`. Install once with: uv run pre-commit install
+repos:
+  # General file hygiene (versioned remote hooks).
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+
+  # Project tools, run via uv so versions match pyproject.toml.
+  - repo: local
+    hooks:
+      - id: black
+        name: black (format)
+        entry: uv run black
+        language: system
+        types: [python]
+
+      - id: ruff
+        name: ruff (lint + autofix)
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      - id: mypy
+        name: mypy (type check)
+        entry: uv run mypy
+        language: system
+        types: [python]
+        # mypy needs the whole package, not just changed files, to resolve imports.
+        pass_filenames: false
+        args: ["."]

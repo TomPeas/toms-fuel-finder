@@ -1,0 +1,22 @@
+info:
+  name: Get Stations
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://127.0.0.1:8000/stations?postcode=CM29JT&max_distance_miles=5
+  params:
+    - name: postcode
+      value: CM29JT
+      type: query
+    - name: max_distance_miles
+      value: "5"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

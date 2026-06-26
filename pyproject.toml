@@ -1,0 +1,69 @@
+[project]
+name = "toms-fuel-finder"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "asyncache>=0.1.1",
+    "cachetools>=7.1.4",
+    "fastapi[standard]>=0.138.0",
+    "haversine>=2.9.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Source lives under src/. `sources = ["src"]` strips the prefix so modules
+# import as `config`, `gov_api_client`, ... rather than `src.config`.
+only-include = ["src"]
+sources = ["src"]
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+    "datamodel-code-generator>=0.65.0",
+    "mypy>=2.1.0",
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
+    "ruff>=0.15.18",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py314"]
+
+[tool.ruff]
+# Match black so ruff never flags code that black has formatted.
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+# A sensible starter rule set. ruff is the linter here; black owns formatting.
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort (import ordering)
+    "B",   # flake8-bugbear (likely bugs)
+    "UP",  # pyupgrade (modern syntax)
+]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["haversine.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+# Let async tests run without decorating every one.
+asyncio_mode = "auto"
+testpaths = ["tests"]
