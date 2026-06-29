@@ -62,8 +62,9 @@ async def test_get_token_refreshes_when_refresh_token_present() -> None:
 
 async def test_fetch_token_posts_and_caches_refresh_token() -> None:
     client = _make_client()
+    # token endpoint wraps the payload in a "data" envelope
     client._client.post = AsyncMock(
-        return_value=_response({"access_token": "AT", "refresh_token": "RT"})
+        return_value=_response({"data": {"access_token": "AT", "refresh_token": "RT"}})
     )
 
     token = await client._fetch_token()
@@ -71,7 +72,7 @@ async def test_fetch_token_posts_and_caches_refresh_token() -> None:
     assert token == "AT"
     assert client._refresh_token_cache["refresh_token"] == "RT"
     client._client.post.assert_awaited_once_with(
-        "/api/v1/oauth/generate_secret_token",
+        "/api/v1/oauth/generate_access_token",
         json={"client_id": "cid", "client_secret": "csecret"},
     )
 

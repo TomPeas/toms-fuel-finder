@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: http://127.0.0.1:8000/stations?postcode=CM29JT&max_distance_miles=5
+  url: http://127.0.0.1:8000/stations?postcode=CM29JT&max_distance_miles=5&sort=distance
   params:
     - name: postcode
       value: CM29JT
@@ -16,7 +16,6 @@ http:
     - name: sort
       value: distance
       type: query
-      disabled: true
   auth: inherit
 
 settings:

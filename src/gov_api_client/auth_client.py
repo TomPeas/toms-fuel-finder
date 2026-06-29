@@ -11,7 +11,7 @@ class AuthClient:
         self._client_id = client_id
         self._client_secret = client_secret
         self._base_url = base_url
-        self._client = AsyncClient(base_url=self._base_url)
+        self._client = AsyncClient(base_url=self._base_url, http2=True)
         self._refresh_token_cache: TTLCache[str, str] = TTLCache(maxsize=1, ttl=172700)
         self._token_cache: TTLCache[str, str] = TTLCache(maxsize=1, ttl=3500)
 

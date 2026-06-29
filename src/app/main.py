@@ -5,6 +5,9 @@ from pydantic import BaseModel
 
 from fuel_finder_client.fuel_finder_client import FuelFinderClient, Sort, Station
 from gov_api_client.models import FuelType
+from logging_config import configure_logging
+
+configure_logging()
 
 
 class FuelFinderResponse(BaseModel):
@@ -36,8 +39,5 @@ async def stations(
     fuel_type: FuelType = FuelType.UNLEADED,
     sort: Sort = Sort.CHEAPEST,
 ) -> FuelFinderResponse:
-    return FuelFinderResponse(
-        stations=await fuel_finder_client.get(
-            postcode, max_distance_miles, fuel_type, sort
-        )
-    )
+    res = await fuel_finder_client.get(postcode, max_distance_miles, fuel_type, sort)
+    return FuelFinderResponse(stations=res)

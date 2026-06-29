@@ -20,7 +20,7 @@ class Station(BaseModel):
     postcode: str
     distance_miles: int
     fuel_type: FuelType
-    price_per_liter: float
+    price_per_liter: float | None
 
 
 class FuelFinderClient:
@@ -52,17 +52,16 @@ class FuelFinderClient:
         for fc in forecourts.values():
             distance = haversine(centre, (fc.latitude, fc.longitude), unit=Unit.MILES)
             if distance <= max_distance_miles:
-                res.append(
-                    Station(
-                        name=fc.trading_name,
-                        postcode=fc.postcode,
-                        distance_miles=round(distance),
-                        fuel_type=fuel_type,
-                        price_per_liter=next(
-                            p.price for p in fc.prices if p.fuel_type == fuel_type
-                        ),
-                    )
+                station = Station(
+                    name=fc.trading_name,
+                    postcode=fc.postcode,
+                    distance_miles=round(distance),
+                    fuel_type=fuel_type,
+                    price_per_liter=next(
+                        (p.price for p in fc.prices if p.fuel_type == fuel_type), None
+                    ),
                 )
+                res.append(station) if station.price_per_liter is not None else None
         keys = {
             Sort.CHEAPEST: attrgetter("price_per_liter"),
             Sort.DISTANCE: attrgetter("distance_miles"),

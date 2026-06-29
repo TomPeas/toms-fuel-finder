@@ -5,10 +5,10 @@ info:
 
 http:
   method: GET
-  url: https://toms-fuel-finder.fly.dev/stations?postcode=CM29JT&max_distance_miles=5
+  url: https://toms-fuel-finder.fly.dev/stations?postcode=RG249GF&max_distance_miles=5
   params:
     - name: postcode
-      value: CM29JT
+      value: RG249GF
       type: query
     - name: max_distance_miles
       value: "5"
