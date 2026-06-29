@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: https://toms-fuel-finder.fly.dev/stations?postcode=CM29JT&max_distance_miles=5
+  url: https://toms-fuel-finder.fly.dev/stations?postcode=CM29JT&max_distance_miles=5&fuel_type=B7_STANDARD
   params:
     - name: postcode
       value: CM29JT
@@ -18,9 +18,8 @@ http:
       type: query
       disabled: true
     - name: fuel_type
-      value: ""
+      value: B7_STANDARD
       type: query
-      disabled: true
   auth: inherit
 
 settings:

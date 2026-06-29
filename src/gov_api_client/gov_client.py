@@ -1,7 +1,7 @@
-from asyncio import Semaphore, gather
+from asyncio import Semaphore, gather, sleep
 from datetime import UTC, datetime
 
-from httpx import AsyncClient, HTTPStatusError, Limits, RequestError
+from httpx import AsyncClient, HTTPStatusError, Limits, RequestError, Response
 
 from gov_api_client.auth.bearer_auth import BearerAuth
 from gov_api_client.auth_client import AuthClient
@@ -17,6 +17,18 @@ class GovApiError(Exception):
     """
 
 
+# Statuses worth retrying — the gov service intermittently returns these.
+_TRANSIENT_STATUS = frozenset({429, 502, 503, 504})
+_MAX_ATTEMPTS = 4
+
+
+def _is_transient(exc: RequestError | HTTPStatusError) -> bool:
+    """A network error, or one of the retryable 'try again' statuses."""
+    if isinstance(exc, HTTPStatusError):
+        return exc.response.status_code in _TRANSIENT_STATUS
+    return True  # RequestError = connect/read/timeout — always worth a retry
+
+
 class GovClient:
     def __init__(self, base_url: str, client_id: str, client_secret: str) -> None:
         self._base_url = base_url
@@ -26,7 +38,7 @@ class GovClient:
         self.forecourts: dict[str, Forecourt] = {}
         self._last_update: datetime | None = None
         self._UPDATE_INTERVAL_SECONDS = 30 * 60
-        self._MAX_BATCH_SIZE = 6
+        self._MAX_BATCH_SIZE = 3
         self._semaphore = Semaphore(self._MAX_BATCH_SIZE)
         self._http_connection_limit = Limits(max_connections=100)
         self._http_client = AsyncClient(
@@ -95,33 +107,50 @@ class GovClient:
             batch_number += self._MAX_BATCH_SIZE  # ← once per wave
         return prices
 
+    async def _get(self, url: str, params: dict[str, str | int]) -> Response:
+        """GET with retry + exponential backoff on transient errors. Returns the
+        response (caller handles 404); re-raises the underlying httpx error once
+        retries are exhausted or the error is permanent (e.g. 403)."""
+        delay = 0.5
+        for attempt in range(_MAX_ATTEMPTS):
+            try:
+                async with self._semaphore:
+                    response = await self._http_client.get(url, params=params)
+                if response.status_code != 404:
+                    response.raise_for_status()
+                return response
+            except (RequestError, HTTPStatusError) as e:
+                if not _is_transient(e) or attempt == _MAX_ATTEMPTS - 1:
+                    raise
+                logger.warning(
+                    "transient error on %s (attempt %d/%d) — retrying in %.1fs",
+                    url,
+                    attempt + 1,
+                    _MAX_ATTEMPTS,
+                    delay,
+                )
+                await sleep(delay)
+                delay *= 2
+        raise AssertionError("unreachable")  # loop always returns or raises
+
     async def _fetch_fuel_price(
         self, batch_number: int, iso_timestamp: str | None = None
     ) -> FuelPricesResponse:
-        async with self._semaphore:
-            params: dict[str, str | int] = {
-                "batch-number": batch_number,
-                **(
-                    {"effective-start-timestamp": iso_timestamp}
-                    if iso_timestamp
-                    else {}
-                ),
-            }
-            try:
-                response = await self._http_client.get(
-                    "/api/v1/pfs/fuel-prices",
-                    params=params,
-                )
-                if response.status_code == 404:
-                    return FuelPricesResponse(data=[])
-                response.raise_for_status()
-            except HTTPStatusError as e:
-                raise GovApiError(
-                    f"Fuel prices request failed: HTTP {e.response.status_code}"
-                ) from e
-            except RequestError as e:
-                raise GovApiError("Could not reach the Fuel Finder service.") from e
-            return FuelPricesResponse(data=response.json())
+        params: dict[str, str | int] = {
+            "batch-number": batch_number,
+            **({"effective-start-timestamp": iso_timestamp} if iso_timestamp else {}),
+        }
+        try:
+            response = await self._get("/api/v1/pfs/fuel-prices", params)
+        except HTTPStatusError as e:
+            raise GovApiError(
+                f"Fuel prices request failed: HTTP {e.response.status_code}"
+            ) from e
+        except RequestError as e:
+            raise GovApiError("Could not reach the Fuel Finder service.") from e
+        if response.status_code == 404:
+            return FuelPricesResponse(data=[])
+        return FuelPricesResponse(data=response.json())
 
     async def _fetch_all_pfs_information(
         self, timestamp: str | None = None
@@ -151,27 +180,21 @@ class GovClient:
     async def _fetch_pfs_information(
         self, batch_number: int, iso_timestamp: str | None = None
     ) -> PFSInfoResponse:
-        async with self._semaphore:
-            params: dict[str, str | int] = {
-                "batch-number": batch_number,
-                **(
-                    {"effective-start-timestamp": iso_timestamp}
-                    if iso_timestamp
-                    else {}
-                ),
-            }
-            try:
-                response = await self._http_client.get("/api/v1/pfs", params=params)
-                if response.status_code == 404:
-                    return PFSInfoResponse(data=[])
-                response.raise_for_status()
-            except HTTPStatusError as e:
-                raise GovApiError(
-                    f"PFS info request failed: HTTP {e.response.status_code}"
-                ) from e
-            except RequestError as e:
-                raise GovApiError("Could not reach the Fuel Finder service.") from e
-            return PFSInfoResponse(data=response.json())
+        params: dict[str, str | int] = {
+            "batch-number": batch_number,
+            **({"effective-start-timestamp": iso_timestamp} if iso_timestamp else {}),
+        }
+        try:
+            response = await self._get("/api/v1/pfs", params)
+        except HTTPStatusError as e:
+            raise GovApiError(
+                f"PFS info request failed: HTTP {e.response.status_code}"
+            ) from e
+        except RequestError as e:
+            raise GovApiError("Could not reach the Fuel Finder service.") from e
+        if response.status_code == 404:
+            return PFSInfoResponse(data=[])
+        return PFSInfoResponse(data=response.json())
 
     async def close(self) -> None:
         await self._auth_client.aclose()

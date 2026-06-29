@@ -1056,6 +1056,7 @@ dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "haversine" },
     { name = "httpx", extra = ["http2"] },
+    { name = "jinja2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
@@ -1079,6 +1080,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.138.0" },
     { name = "haversine", specifier = ">=2.9.0" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.28.1" },
+    { name = "jinja2", specifier = ">=3.1.6" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
 ]

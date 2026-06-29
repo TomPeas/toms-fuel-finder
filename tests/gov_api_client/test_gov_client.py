@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from httpx import HTTPStatusError, RequestError
 
-from gov_api_client.gov_client import GovApiError, GovClient
+from gov_api_client.gov_client import _MAX_ATTEMPTS, GovApiError, GovClient
 from gov_api_client.models import (
     Forecourt,
     ForecourtInfo,
@@ -133,12 +133,37 @@ async def test_fetch_raises_gov_api_error_on_bad_status() -> None:
         await gov._fetch_pfs_information(1)
 
 
-async def test_fetch_raises_gov_api_error_on_network_error() -> None:
+async def test_fetch_retries_then_raises_on_persistent_network_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("gov_api_client.gov_client.sleep", AsyncMock())
     gov = _make_gov()
     gov._http_client.get = AsyncMock(side_effect=RequestError("boom"))
 
     with pytest.raises(GovApiError):
         await gov._fetch_fuel_price(1)
+
+    # network errors are transient -> retried up to the limit before giving up
+    assert gov._http_client.get.await_count == _MAX_ATTEMPTS
+
+
+async def test_fetch_retries_transient_status_then_succeeds(
+    monkeypatch: pytest.MonkeyPatch, sample_prices: ForecourtPrices
+) -> None:
+    monkeypatch.setattr("gov_api_client.gov_client.sleep", AsyncMock())
+    gov = _make_gov()
+    transient = MagicMock()
+    transient.status_code = 503
+    transient.raise_for_status.side_effect = HTTPStatusError(
+        "boom", request=MagicMock(), response=MagicMock(status_code=503)
+    )
+    ok = _response([sample_prices.model_dump(mode="json")])
+    gov._http_client.get = AsyncMock(side_effect=[transient, ok])
+
+    result = await gov._fetch_fuel_price(1)
+
+    assert result.data[0].node_id == "n1"
+    assert gov._http_client.get.await_count == 2  # one retry, then success
 
 
 # ── pagination: correct method, contiguous batches, stop on empty ────────
