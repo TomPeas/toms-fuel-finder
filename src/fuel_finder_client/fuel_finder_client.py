@@ -2,12 +2,17 @@ from enum import StrEnum
 from operator import attrgetter
 
 from haversine import Unit, haversine
-from httpx import Client
+from httpx import Client, HTTPStatusError, RequestError
 from pydantic import BaseModel
 
 from config import settings
 from gov_api_client.gov_client import GovClient
 from gov_api_client.models import Forecourt, FuelType
+from logging_config import SYNC_HTTPX_EVENT_HOOKS, logger
+
+
+class PostcodeError(Exception):
+    """Raised when a postcode can't be resolved to coordinates."""
 
 
 class Sort(StrEnum):
@@ -28,11 +33,23 @@ class FuelFinderClient:
         self._gov_client = GovClient(
             settings.gov_base_url, settings.gov_client_id, settings.gov_client_secret
         )
-        self._post_code_client = Client(base_url="https://api.postcodes.io")
+        self._post_code_client = Client(
+            base_url="https://api.postcodes.io", event_hooks=SYNC_HTTPX_EVENT_HOOKS
+        )
 
     def _get_coords(self, postcode: str) -> tuple[int, int]:
-        response = self._post_code_client.get(f"/postcodes/{postcode}")
-        response.raise_for_status()
+        try:
+            response = self._post_code_client.get(f"/postcodes/{postcode}")
+            response.raise_for_status()
+        except HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise PostcodeError(f"Postcode not found: {postcode!r}") from e
+            raise PostcodeError(
+                f"Postcode lookup failed: HTTP {e.response.status_code}"
+            ) from e
+        except RequestError as e:
+            logger.error("postcode lookup failed: %s", e)
+            raise PostcodeError("Could not reach the postcode service.") from e
         data = response.json()
         return data["result"]["latitude"], data["result"]["longitude"]
 

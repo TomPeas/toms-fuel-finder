@@ -67,3 +67,8 @@ ignore_missing_imports = true
 # Let async tests run without decorating every one.
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# Integration tests run by default (they skip themselves if gov credentials
+# aren't in the env). Run only unit tests with: uv run pytest -m "not integration"
+markers = [
+    "integration: hits the real gov + postcodes APIs; needs gov credentials in env",
+]

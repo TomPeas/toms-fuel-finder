@@ -1,12 +1,20 @@
 from asyncio import Semaphore, gather
 from datetime import UTC, datetime
 
-from httpx import AsyncClient, Limits
+from httpx import AsyncClient, HTTPStatusError, Limits, RequestError
 
 from gov_api_client.auth.bearer_auth import BearerAuth
 from gov_api_client.auth_client import AuthClient
 from gov_api_client.models import Forecourt, FuelPricesResponse, PFSInfoResponse
 from logging_config import HTTPX_EVENT_HOOKS, logger
+
+
+class GovApiError(Exception):
+    """Raised when a Fuel Finder data request fails (bad status or unreachable).
+
+    The HTTP error itself is logged at WARNING by the client's response hook;
+    this carries a clean message up to the caller.
+    """
 
 
 class GovClient:
@@ -99,15 +107,21 @@ class GovClient:
                     else {}
                 ),
             }
-            response = await self._http_client.get(
-                "/api/v1/pfs/fuel-prices",
-                params=params,
-            )
-            if response.status_code == 404:
-                return FuelPricesResponse(data=[])
-            response.raise_for_status()
-            res = response.json()
-            return FuelPricesResponse(data=res)
+            try:
+                response = await self._http_client.get(
+                    "/api/v1/pfs/fuel-prices",
+                    params=params,
+                )
+                if response.status_code == 404:
+                    return FuelPricesResponse(data=[])
+                response.raise_for_status()
+            except HTTPStatusError as e:
+                raise GovApiError(
+                    f"Fuel prices request failed: HTTP {e.response.status_code}"
+                ) from e
+            except RequestError as e:
+                raise GovApiError("Could not reach the Fuel Finder service.") from e
+            return FuelPricesResponse(data=response.json())
 
     async def _fetch_all_pfs_information(
         self, timestamp: str | None = None
@@ -146,12 +160,18 @@ class GovClient:
                     else {}
                 ),
             }
-            response = await self._http_client.get("/api/v1/pfs", params=params)
-            if response.status_code == 404:
-                return PFSInfoResponse(data=[])
-            response.raise_for_status()
-            res = response.json()
-            return PFSInfoResponse(data=res)
+            try:
+                response = await self._http_client.get("/api/v1/pfs", params=params)
+                if response.status_code == 404:
+                    return PFSInfoResponse(data=[])
+                response.raise_for_status()
+            except HTTPStatusError as e:
+                raise GovApiError(
+                    f"PFS info request failed: HTTP {e.response.status_code}"
+                ) from e
+            except RequestError as e:
+                raise GovApiError("Could not reach the Fuel Finder service.") from e
+            return PFSInfoResponse(data=response.json())
 
     async def close(self) -> None:
         await self._auth_client.aclose()

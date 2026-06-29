@@ -7,7 +7,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import HTTPError
+from httpx import HTTPStatusError, RequestError
 
 from gov_api_client.auth_client import AuthClient, AuthError
 
@@ -80,7 +80,9 @@ async def test_fetch_token_posts_and_caches_refresh_token() -> None:
 async def test_fetch_token_raises_autherror_on_http_error() -> None:
     client = _make_client()
     resp = MagicMock()
-    resp.raise_for_status.side_effect = HTTPError("boom")
+    resp.raise_for_status.side_effect = HTTPStatusError(
+        "boom", request=MagicMock(), response=MagicMock(status_code=403)
+    )
     client._client.post = AsyncMock(return_value=resp)
 
     with pytest.raises(AuthError):
@@ -91,7 +93,9 @@ async def test_refresh_token_posts_and_returns_access_token() -> None:
     client = _make_client()
     client._refresh_token_cache["refresh_token"] = "old_rt"
     client._client.post = AsyncMock(
-        return_value=_response({"access_token": "AT2", "refresh_token": "new_rt"})
+        return_value=_response(
+            {"data": {"access_token": "AT2", "refresh_token": "new_rt"}}
+        )
     )
 
     token = await client._refresh_token()
@@ -108,7 +112,7 @@ async def test_refresh_token_raises_autherror_on_http_error() -> None:
     client = _make_client()
     client._refresh_token_cache["refresh_token"] = "old_rt"
     resp = MagicMock()
-    resp.raise_for_status.side_effect = HTTPError("boom")
+    resp.raise_for_status.side_effect = RequestError("boom")
     client._client.post = AsyncMock(return_value=resp)
 
     with pytest.raises(AuthError):

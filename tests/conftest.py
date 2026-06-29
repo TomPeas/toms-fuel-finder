@@ -1,5 +1,6 @@
-"""Shared fixtures: ready-built model instances for the unit tests."""
+"""Shared fixtures: ready-built model instances + integration credentials."""
 
+import os
 from datetime import datetime, time
 
 import pytest
@@ -17,6 +18,25 @@ from gov_api_client.models import (
 )
 
 _TS = datetime(2026, 2, 17, 16, 0, 0)
+
+_REQUIRED_ENV = ("GOV_CLIENT_ID", "GOV_CLIENT_SECRET", "GOV_BASE_URL")
+
+
+@pytest.fixture
+def gov_credentials() -> dict[str, str]:
+    """Real gov credentials from the environment, for integration tests.
+
+    Skips (rather than fails) when the env vars are absent, so unit runs and CI
+    without secrets are unaffected.
+    """
+    missing = [name for name in _REQUIRED_ENV if not os.environ.get(name)]
+    if missing:
+        pytest.skip(f"set {', '.join(_REQUIRED_ENV)} to run integration tests")
+    return {
+        "client_id": os.environ["GOV_CLIENT_ID"],
+        "client_secret": os.environ["GOV_CLIENT_SECRET"],
+        "base_url": os.environ["GOV_BASE_URL"],
+    }
 
 
 def _day() -> DayOpening:

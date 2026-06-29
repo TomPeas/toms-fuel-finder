@@ -16,7 +16,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-from gov_api_client.gov_client import GovClient
+import pytest
+from httpx import HTTPStatusError, RequestError
+
+from gov_api_client.gov_client import GovApiError, GovClient
 from gov_api_client.models import (
     Forecourt,
     ForecourtInfo,
@@ -115,6 +118,27 @@ async def test_fetch_404_returns_empty() -> None:
     result = await gov._fetch_pfs_information(99)
 
     assert result.data == []
+
+
+async def test_fetch_raises_gov_api_error_on_bad_status() -> None:
+    gov = _make_gov()
+    resp = MagicMock()
+    resp.status_code = 500
+    resp.raise_for_status.side_effect = HTTPStatusError(
+        "boom", request=MagicMock(), response=MagicMock(status_code=500)
+    )
+    gov._http_client.get = AsyncMock(return_value=resp)
+
+    with pytest.raises(GovApiError):
+        await gov._fetch_pfs_information(1)
+
+
+async def test_fetch_raises_gov_api_error_on_network_error() -> None:
+    gov = _make_gov()
+    gov._http_client.get = AsyncMock(side_effect=RequestError("boom"))
+
+    with pytest.raises(GovApiError):
+        await gov._fetch_fuel_price(1)
 
 
 # ── pagination: correct method, contiguous batches, stop on empty ────────

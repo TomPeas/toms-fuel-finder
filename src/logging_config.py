@@ -42,17 +42,43 @@ def configure_logging() -> None:
     logger.setLevel(level)  # our app logger only
 
 
+def _log_response_line(response: Response) -> None:
+    """Log a response: errors (>=400) at WARNING so they're always visible,
+    successful responses at DEBUG."""
+    request = response.request
+    if response.status_code >= 400:
+        logger.warning(
+            "HTTP %s on %s %s", response.status_code, request.method, request.url
+        )
+    else:
+        logger.debug("← %s %s %s", response.status_code, request.method, request.url)
+
+
 async def _log_request(request: Request) -> None:
     logger.debug("→ %s %s", request.method, request.url)
 
 
 async def _log_response(response: Response) -> None:
-    request = response.request
-    logger.debug("← %s %s %s", response.status_code, request.method, request.url)
+    _log_response_line(response)
 
 
-# Pass to AsyncClient(event_hooks=HTTPX_EVENT_HOOKS) to log requests at DEBUG.
+def _sync_log_request(request: Request) -> None:
+    logger.debug("→ %s %s", request.method, request.url)
+
+
+def _sync_log_response(response: Response) -> None:
+    _log_response_line(response)
+
+
+# For AsyncClient(event_hooks=HTTPX_EVENT_HOOKS) — logs every request at DEBUG and
+# every error response at WARNING.
 HTTPX_EVENT_HOOKS: dict[str, list[Callable[..., Any]]] = {
     "request": [_log_request],
     "response": [_log_response],
+}
+
+# Same, for the synchronous httpx.Client (e.g. the postcode lookup).
+SYNC_HTTPX_EVENT_HOOKS: dict[str, list[Callable[..., Any]]] = {
+    "request": [_sync_log_request],
+    "response": [_sync_log_response],
 }
