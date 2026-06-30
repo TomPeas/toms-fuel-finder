@@ -196,6 +196,6 @@ class GovClient:
             return PFSInfoResponse(data=[])
         return PFSInfoResponse(data=response.json())
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         await self._auth_client.aclose()
         await self._http_client.aclose()

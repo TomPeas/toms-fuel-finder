@@ -2,13 +2,13 @@ from enum import StrEnum
 from operator import attrgetter
 
 from haversine import Unit, haversine
-from httpx import Client, HTTPStatusError, RequestError
+from httpx import AsyncClient, HTTPStatusError, RequestError
 from pydantic import BaseModel
 
 from config import settings
 from gov_api_client.gov_client import GovClient
 from gov_api_client.models import Forecourt, FuelType
-from logging_config import SYNC_HTTPX_EVENT_HOOKS, logger
+from logging_config import HTTPX_EVENT_HOOKS, logger
 
 
 class PostcodeError(Exception):
@@ -33,13 +33,18 @@ class FuelFinderClient:
         self._gov_client = GovClient(
             settings.gov_base_url, settings.gov_client_id, settings.gov_client_secret
         )
-        self._post_code_client = Client(
-            base_url="https://api.postcodes.io", event_hooks=SYNC_HTTPX_EVENT_HOOKS
+        self._post_code_client = AsyncClient(
+            base_url="https://api.postcodes.io",
+            event_hooks=HTTPX_EVENT_HOOKS,
+            http2=True,
         )
 
-    def _get_coords(self, postcode: str) -> tuple[int, int]:
+    def is_ready(self) -> bool:
+        return bool(self._gov_client.forecourts)
+
+    async def _get_coords(self, postcode: str) -> tuple[int, int]:
         try:
-            response = self._post_code_client.get(f"/postcodes/{postcode}")
+            response = await self._post_code_client.get(f"/postcodes/{postcode}")
             response.raise_for_status()
         except HTTPStatusError as e:
             if e.response.status_code == 404:
@@ -63,7 +68,7 @@ class FuelFinderClient:
         fuel_type: FuelType = FuelType.UNLEADED,
         sort: Sort = Sort.CHEAPEST,
     ) -> list[Station]:
-        centre = self._get_coords(postcode)
+        centre = await self._get_coords(postcode)
         forecourts = await self._get_forecourts()
         res: list[Station] = []
         for fc in forecourts.values():
@@ -85,3 +90,7 @@ class FuelFinderClient:
         }
         res.sort(key=keys[sort])
         return res
+
+    async def aclose(self) -> None:
+        await self._gov_client.aclose()
+        await self._post_code_client.aclose()

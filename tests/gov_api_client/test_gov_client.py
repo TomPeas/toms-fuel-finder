@@ -297,7 +297,7 @@ async def test_close_closes_both_clients() -> None:
     gov._http_client.aclose = AsyncMock()
     gov._auth_client.aclose = AsyncMock()
 
-    await gov.close()
+    await gov.aclose()
 
     gov._http_client.aclose.assert_awaited_once()
     gov._auth_client.aclose.assert_awaited_once()

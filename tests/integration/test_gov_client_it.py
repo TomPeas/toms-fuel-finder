@@ -20,7 +20,7 @@ async def test_first_info_batch_is_authorized(gov_credentials: dict[str, str]) -
         assert len(result.data) > 0
         assert result.data[0].node_id
     finally:
-        await gov.close()
+        await gov.aclose()
 
 
 async def test_first_price_batch_is_authorized(gov_credentials: dict[str, str]) -> None:
@@ -30,7 +30,7 @@ async def test_first_price_batch_is_authorized(gov_credentials: dict[str, str]) 
         assert len(result.data) > 0
         assert result.data[0].node_id
     finally:
-        await gov.close()
+        await gov.aclose()
 
 
 async def test_incremental_info_request_is_authorized(
@@ -44,4 +44,4 @@ async def test_incremental_info_request_is_authorized(
         )
         assert len(result.data) >= 0  # may be empty, but must not 403
     finally:
-        await gov.close()
+        await gov.aclose()

@@ -1,6 +1,9 @@
+from asyncio import create_task
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from enum import Enum
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from pydantic import BaseModel
 
 from fuel_finder_client.fuel_finder_client import FuelFinderClient, Sort, Station
@@ -23,8 +26,29 @@ class HealthResponse(BaseModel):
     status: HealthStatus
 
 
-app = FastAPI()
 fuel_finder_client = FuelFinderClient()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Warm the cache in the background so startup (and /livez) isn't blocked.
+    warm_task = create_task(
+        fuel_finder_client.get("SW1A 1AA", 10, FuelType.UNLEADED, Sort.CHEAPEST)
+    )
+    yield
+    warm_task.cancel()
+    await fuel_finder_client.aclose()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/readyz")
+async def readyz(response: Response) -> HealthResponse:
+    if fuel_finder_client.is_ready():  # cache populated?
+        return HealthResponse(status=HealthStatus.OK)
+    response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return HealthResponse(status=HealthStatus.ERROR)
 
 
 @app.get("/health")
