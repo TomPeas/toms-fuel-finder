@@ -26,6 +26,13 @@ class Station(BaseModel):
     distance_miles: int
     fuel_type: FuelType
     price_per_liter: float | None
+    google_maps_url: str = ""
+
+
+def _construct_google_maps_url(name: str) -> str:
+    return f"https://www.google.com/maps/search/?api=1&query={
+    "+".join(name.split(" "))
+    }"
 
 
 class FuelFinderClient:
@@ -82,6 +89,7 @@ class FuelFinderClient:
                     price_per_liter=next(
                         (p.price for p in fc.prices if p.fuel_type == fuel_type), None
                     ),
+                    google_maps_url=_construct_google_maps_url(fc.trading_name),
                 )
                 res.append(station) if station.price_per_liter is not None else None
         keys = {

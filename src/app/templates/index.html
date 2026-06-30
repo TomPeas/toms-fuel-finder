@@ -165,14 +165,21 @@
         gap: 0.75rem;
       }
       .station {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden; /* keep the link's tap area inside the rounded corners */
+      }
+      /* the whole row is a link: take over the layout/padding and strip the
+         default anchor styling so it looks identical to before */
+      .station-link {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
         padding: 1rem 1.1rem;
+        text-decoration: none;
+        color: inherit;
       }
       .station-info {
         display: flex;

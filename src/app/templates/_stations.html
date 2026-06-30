@@ -4,12 +4,14 @@
   {% if stations %}
 <ul class="results">
   {% for s in stations %}
-  <li class="station">
-    <div class="station-info">
-      <span class="station-name">{{ s.name }}</span>
-      <span class="station-meta">{{ s.postcode }} &middot; {{ s.distance_miles }} mi</span>
-    </div>
+  <li class="station" >
+    <a href="{{ s.google_maps_url }}" target="_blank" rel="noopener noreferrer" class="station-link">
+      <div class="station-info" >
+        <span class="station-name">{{ s.name }}</span>
+        <span class="station-meta">{{ s.postcode }} &middot; {{ s.distance_miles }} mi</span>
+      </div>
     <span class="station-price">{{ "%.1f"|format(s.price_per_liter) }}p</span>
+    </a>
   </li>
   {% endfor %}
 </ul>
