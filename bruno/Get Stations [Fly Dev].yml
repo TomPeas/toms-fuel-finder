@@ -13,13 +13,13 @@ http:
     - name: max_distance_miles
       value: "5"
       type: query
+    - name: fuel_type
+      value: B7_STANDARD
+      type: query
     - name: sort
       value: distance
       type: query
       disabled: true
-    - name: fuel_type
-      value: B7_STANDARD
-      type: query
   auth: inherit
 
 settings:

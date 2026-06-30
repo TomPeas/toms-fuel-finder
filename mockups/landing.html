@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#040c18" />
+    <title>Toms Fuel Finder</title>
+
+    <!-- HTMX is loaded but NOT wired up yet. When we wire it, the <form> below
+         will carry hx-get / hx-target / hx-swap attributes to fetch results
+         and swap them into the page without a reload. -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+    <style>
+      :root {
+        --bg: #040c18; /* darkest navy — page background */
+        --surface: #0f2747; /* navy — the form card */
+        --header: #081a33; /* darker blue — heading band */
+        --field: #0a1f3c; /* input background */
+        --border: #1f3f68;
+        --text: #eaf1fb;
+        --muted: #9db2d4;
+        --accent: #4cb2ff;
+        --accent-strong: #1f8bff;
+        --radius: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+
+      body {
+        background:
+          radial-gradient(
+            1100px 520px at 50% -8%,
+            #133255 0%,
+            transparent 60%
+          ),
+          var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        min-height: 100dvh; /* dynamic viewport on mobile (address bar) */
+        display: flex;
+        justify-content: center;
+        padding: 1.25rem;
+      }
+
+      .shell {
+        width: 100%;
+        max-width: 480px; /* phone-width column, centred on desktop */
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ── header ───────────────────────────────────────────── */
+      header {
+        text-align: center;
+        background: var(--header);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.75rem 1.25rem;
+        margin-bottom: 1rem;
+      }
+      .logo {
+        font-size: 2.8rem;
+        line-height: 1;
+      }
+      h1 {
+        margin: 0.5rem 0 0.3rem;
+        font-size: clamp(2rem, 7.5vw, 2.7rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .tagline {
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.1rem;
+      }
+      .accent-bar {
+        height: 4px;
+        width: 64px;
+        margin: 0.9rem auto 0;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+      }
+
+      /* ── form card ────────────────────────────────────────── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem 1.25rem;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      label {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      input,
+      select {
+        width: 100%;
+        font-size: 1.1rem; /* >=16px so iOS doesn't zoom on focus */
+        font-family: inherit;
+        color: var(--text);
+        background: var(--field);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.95rem 1rem;
+        min-height: 54px; /* large tap target */
+        appearance: none;
+        -webkit-appearance: none;
+      }
+      input::placeholder {
+        color: #6f88ad;
+      }
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(76, 178, 255, 0.28);
+      }
+
+      /* custom dropdown chevron so selects look consistent on mobile */
+      select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239db2d4' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        padding-right: 2.75rem;
+      }
+
+      .btn {
+        margin-top: 0.25rem;
+        width: 100%;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #04101f;
+        background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+        border: none;
+        border-radius: 12px;
+        padding: 1rem;
+        min-height: 56px;
+        cursor: pointer;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+        padding: 1.25rem 0 0.5rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="shell">
+      <header>
+        <div class="logo">⛽</div>
+        <h1>Toms Fuel Finder</h1>
+        <p class="tagline">Find the cheapest fuel near you</p>
+        <div class="accent-bar"></div>
+      </header>
+
+      <main class="card">
+        <form onsubmit="return false">
+          <div class="field">
+            <label for="postcode">Postcode</label>
+            <input
+              id="postcode"
+              name="postcode"
+              type="text"
+              inputmode="text"
+              autocapitalize="characters"
+              autocomplete="postal-code"
+              placeholder="e.g. CM2 9JT"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="fuel_type">Fuel type</label>
+            <select id="fuel_type" name="fuel_type">
+              <option value="E10">Unleaded (E10)</option>
+              <option value="E5">Super Unleaded (E5)</option>
+              <option value="B7_STANDARD">Diesel (B7)</option>
+              <option value="B7_PREMIUM">Premium Diesel (B7)</option>
+              <option value="B10">Diesel (B10)</option>
+              <option value="HVO">HVO — Renewable Diesel</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="max_distance_miles">Within (miles)</label>
+            <input
+              id="max_distance_miles"
+              name="max_distance_miles"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="50"
+              value="10"
+            />
+          </div>
+
+          <div class="field">
+            <label for="sort">Sort by</label>
+            <select id="sort" name="sort">
+              <option value="cheapest">Cheapest first</option>
+              <option value="distance">Nearest first</option>
+            </select>
+          </div>
+
+          <button class="btn" type="submit">⛽ Search fuel</button>
+        </form>
+      </main>
+
+      <footer>Fuel prices from the UK Fuel Finder service</footer>
+    </div>
+  </body>
+</html>

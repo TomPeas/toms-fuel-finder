@@ -1,0 +1,19 @@
+{% if error %}
+<p class="msg error">{{ error }}</p>
+{% elif stations is not none %}
+  {% if stations %}
+<ul class="results">
+  {% for s in stations %}
+  <li class="station">
+    <div class="station-info">
+      <span class="station-name">{{ s.name }}</span>
+      <span class="station-meta">{{ s.postcode }} &middot; {{ s.distance_miles }} mi</span>
+    </div>
+    <span class="station-price">{{ "%.1f"|format(s.price_per_liter) }}p</span>
+  </li>
+  {% endfor %}
+</ul>
+  {% else %}
+<p class="msg">No stations found within range.</p>
+  {% endif %}
+{% endif %}
