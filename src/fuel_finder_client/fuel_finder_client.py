@@ -71,7 +71,7 @@ class FuelFinderClient:
     async def get(
         self,
         postcode: str,
-        max_distance_miles: int = 10,
+        max_distance_miles: int = 5,
         fuel_type: FuelType = FuelType.UNLEADED,
         sort: Sort = Sort.CHEAPEST,
     ) -> list[Station]:

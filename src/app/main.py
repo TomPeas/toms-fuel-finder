@@ -83,7 +83,7 @@ async def health() -> HealthResponse:
 @app.get("/stations")
 async def stations(
     postcode: str,
-    max_distance_miles: int = 10,
+    max_distance_miles: int = 5,
     fuel_type: FuelType = FuelType.UNLEADED,
     sort: Sort = Sort.CHEAPEST,
 ) -> FuelFinderResponse:
@@ -95,7 +95,7 @@ async def stations(
 async def index(
     request: Request,
     postcode: str | None = None,
-    max_distance_miles: int = 10,
+    max_distance_miles: int = 5,
     fuel_type: FuelType = FuelType.UNLEADED,
     sort: Sort = Sort.CHEAPEST,
 ) -> HTMLResponse:

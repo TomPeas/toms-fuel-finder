@@ -219,6 +219,44 @@
         background: #2a1320;
       }
 
+      /* ── collapsible search ───────────────────────────────── */
+      .search {
+        margin-top: 1rem;
+      }
+      .search > summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .search > summary::-webkit-details-marker {
+        display: none;
+      }
+      .search > summary::after {
+        content: "";
+        width: 0.6rem;
+        height: 0.6rem;
+        border-right: 2px solid var(--muted);
+        border-bottom: 2px solid var(--muted);
+        transform: rotate(45deg);
+        transition: transform 0.2s ease;
+      }
+      .search[open] > summary::after {
+        transform: rotate(-135deg);
+      }
+      .search[open] .card {
+        margin-top: 0.6rem;
+      }
+
       footer {
         text-align: center;
         color: var(--muted);
@@ -237,76 +275,86 @@
         <div class="accent-bar"></div>
       </header>
 
-      <main class="card">
-        <!-- Works with HTMX (in-place swap) and without it (native GET reload). -->
-        <form
-          method="get"
-          action="/"
-          hx-get="/"
-          hx-target="#results"
-          hx-swap="innerHTML"
-        >
-          <div class="field">
-            <label for="postcode">Postcode</label>
-            <input
-              id="postcode"
-              name="postcode"
-              type="text"
-              inputmode="text"
-              autocapitalize="characters"
-              autocomplete="postal-code"
-              placeholder="e.g. CM2 9JT"
-              value="{{ postcode }}"
-              required
-            />
-          </div>
+      <!-- Search stays at the top (collapses to a bar after a search) so it's
+           always reachable without scrolling past a long list. Native <details>
+           works without JS; with JS, HTMX closes it after a successful search. -->
+      <details id="search" class="search" {% if not stations %}open{% endif %}>
+        <summary>🔍 Search</summary>
+        <div class="card">
+          <form
+            method="get"
+            action="/"
+            hx-get="/"
+            hx-target="#results"
+            hx-swap="innerHTML"
+          >
+            <div class="field">
+              <label for="postcode">Postcode</label>
+              <input
+                id="postcode"
+                name="postcode"
+                type="text"
+                inputmode="text"
+                autocapitalize="characters"
+                autocomplete="postal-code"
+                placeholder="e.g. CM2 9JT"
+                value="{{ postcode }}"
+                required
+              />
+            </div>
 
-          <div class="field">
-            <label for="fuel_type">Fuel type</label>
-            <select id="fuel_type" name="fuel_type">
-              {% for value, text in fuel_types %}
-              <option
-                value="{{ value }}"
-                {% if value == selected_fuel_type %}selected{% endif %}
-              >
-                {{ text }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
+            <div class="field">
+              <label for="fuel_type">Fuel type</label>
+              <select id="fuel_type" name="fuel_type">
+                {% for value, text in fuel_types %}
+                <option
+                  value="{{ value }}"
+                  {% if value == selected_fuel_type %}selected{% endif %}
+                >
+                  {{ text }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
 
-          <div class="field">
-            <label for="max_distance_miles">Within (miles)</label>
-            <input
-              id="max_distance_miles"
-              name="max_distance_miles"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              max="50"
-              value="{{ max_distance_miles }}"
-            />
-          </div>
+            <div class="field">
+              <label for="max_distance_miles">Within (miles)</label>
+              <input
+                id="max_distance_miles"
+                name="max_distance_miles"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="50"
+                value="{{ max_distance_miles }}"
+              />
+            </div>
 
-          <div class="field">
-            <label for="sort">Sort by</label>
-            <select id="sort" name="sort">
-              {% for value, text in sorts %}
-              <option
-                value="{{ value }}"
-                {% if value == selected_sort %}selected{% endif %}
-              >
-                {{ text }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
+            <div class="field">
+              <label for="sort">Sort by</label>
+              <select id="sort" name="sort">
+                {% for value, text in sorts %}
+                <option
+                  value="{{ value }}"
+                  {% if value == selected_sort %}selected{% endif %}
+                >
+                  {{ text }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
 
-          <button class="btn" type="submit">⛽ Search fuel</button>
-        </form>
-      </main>
+            <button class="btn" type="submit">⛽ Search fuel</button>
+          </form>
+        </div>
+      </details>
 
-      <section id="results">{% include "_stations.html" %}</section>
+      <!-- Results below the search bar. Collapse the search only when actual
+           results came back (not on "no results" or an error). -->
+      <section
+        id="results"
+        hx-on::after-swap="document.getElementById('search').open = !this.querySelector('.results')"
+      >{% include "_stations.html" %}</section>
 
       <footer>Fuel prices from the UK Fuel Finder service</footer>
     </div>

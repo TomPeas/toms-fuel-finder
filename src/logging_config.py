@@ -26,6 +26,17 @@ def get_logger(name: str) -> logging.Logger:
     return logger.getChild(name)
 
 
+class _HealthCheckFilter(logging.Filter):
+    """Drop uvicorn access-log lines for health-check probes (Fly pings /readyz
+    every interval, which otherwise floods the logs)."""
+
+    _PATHS = ("/readyz", "/livez", "/health")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return not any(path in message for path in self._PATHS)
+
+
 def configure_logging() -> None:
     """Configure logging. Call once at application startup.
 
@@ -40,6 +51,8 @@ def configure_logging() -> None:
         force=True,  # take effect even if uvicorn already configured logging
     )
     logger.setLevel(level)  # our app logger only
+    # quieten the access log for health-check probes
+    logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
 
 
 def _log_response_line(response: Response) -> None:
