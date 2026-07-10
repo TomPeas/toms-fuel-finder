@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from app.middleware.hsts import hsts_middleware
 from fuel_finder_client.fuel_finder_client import (
     FuelFinderClient,
     PostcodeError,
@@ -65,6 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(lifespan=lifespan)
+app.middleware("http")(hsts_middleware)
 
 
 @app.get("/readyz")
