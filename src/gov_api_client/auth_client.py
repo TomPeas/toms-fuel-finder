@@ -1,3 +1,4 @@
+from asyncio import Lock
 from typing import Any
 
 from cachetools import TTLCache
@@ -20,16 +21,27 @@ class AuthClient:
         )
         self._refresh_token_cache: TTLCache[str, str] = TTLCache(maxsize=1, ttl=172700)
         self._token_cache: TTLCache[str, str] = TTLCache(maxsize=1, ttl=3500)
+        self._mutex = Lock()
 
     async def get_token(self) -> str:
-        if self._token_cache.get("access_token") is not None:
-            return self._token_cache["access_token"]
-        if self._refresh_token_cache.get("refresh_token") is not None:
-            token = await self._refresh_token()
-        else:
-            token = await self._fetch_token()
-        self._token_cache["access_token"] = token
-        return token
+        # fast path: no lock when the token is already cached (the common case)
+        cached = self._token_cache.get("access_token")
+        if cached is not None:
+            return cached
+
+        async with self._mutex:
+            # re-check under the lock — someone may have refreshed while we waited
+            cached = self._token_cache.get("access_token")
+            if cached is not None:
+                return cached
+
+            if self._refresh_token_cache.get("refresh_token") is not None:
+                token = await self._refresh_token()
+            else:
+                token = await self._fetch_token()
+
+            self._token_cache["access_token"] = token
+            return token
 
     def _store_tokens(self, data: dict[str, Any]) -> str:
         """Read tokens from the response's ``data`` envelope, cache the refresh

@@ -1,4 +1,4 @@
-from asyncio import Semaphore, gather, sleep
+from asyncio import Lock, Semaphore, gather, sleep
 from datetime import UTC, datetime
 
 from httpx import AsyncClient, HTTPStatusError, Limits, RequestError, Response
@@ -48,15 +48,32 @@ class GovClient:
             limits=self._http_connection_limit,
             event_hooks=HTTPX_EVENT_HOOKS,
         )
+        self._mutex = Lock()
 
     async def get_forecourt_data(self, ids: list[str] | None) -> dict[str, Forecourt]:
         now = datetime.now(UTC)
-        if self._last_update is None or len(self.forecourts) == 0:
-            self._last_update = now
-            await self._collect()
-        elif (now - self._last_update).total_seconds() > self._UPDATE_INTERVAL_SECONDS:
-            await self._collect(self._last_update.isoformat())
-            self._last_update = now
+        is_first_run = self._last_update is None and len(self.forecourts) == 0
+        has_expired = (
+            (now - self._last_update).total_seconds() > self._UPDATE_INTERVAL_SECONDS
+            if self._last_update
+            else False
+        )
+        if not is_first_run and not has_expired:
+            logger.debug("returning cached forecourt data")
+            return self._get_forecourts(ids)
+
+        async with self._mutex:
+            if is_first_run:
+                await self._collect()
+                self._last_update = now
+            elif has_expired:
+                await self._collect(
+                    self._last_update.isoformat() if self._last_update else None
+                )
+                self._last_update = now
+            return self._get_forecourts(ids)
+
+    def _get_forecourts(self, ids: list[str] | None) -> dict[str, Forecourt]:
         if ids is None:
             return self.forecourts
         res: dict[str, Forecourt] = {}
